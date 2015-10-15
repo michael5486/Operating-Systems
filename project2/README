@@ -1,0 +1,8 @@
+Michael Esposito
+Assignment #2
+
+To compile:
+
+gcc shell.c
+
+I encountered issues trying to get the history to work. I cannot straighten out the pointers because it changes all the elements in my history array to the most recent command entered. I thought making a copy of the string would work, but it prints out gibberish instead. I put in code to make the program work were it to successfully store the history as an array of char *'s pointing to the recent commands entered. Everything else should work correctly.
