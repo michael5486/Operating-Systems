@@ -1,42 +1,44 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <semaphore.h>
+#include <stdlib.h>
 
 #define NUMBER_OF_CUSTOMERS 5
 #define NUMBER_OF_RESOURCES 3
+#define NUMBER_OF_LOOPS 20
 
 typedef struct {
-    int request[NUMBER_OF_RESOURCES];
-} customerData;
+    int id;
+} threadData;
+
+pthread_mutex_t mutex; //mutex to control race conditions
 
 /* the available amount of each resource */
 int available[NUMBER_OF_RESOURCES];
 
 /*the maximum demand of each customer */
 //int maximum[NUMBER_OF_CUSTOMERS][NUMBER_OF_RESOURCES];
-int maximum[5][3] = {{7, 5, 3}, {3, 2, 2}, {9, 0, 2}, {2, 2, 2,}, {4, 3, 3}};
+int maximum[5][3] = {{7, 5, 3}, {3, 2, 2}, {9, 0, 2}, {2, 2, 2,}, {4, 3, 3}}; //numbers from the book example
 
 
 /* the amount currently allocated to each customer */
 //int allocation[NUMBER_OF_CUSTOMERS][NUMBER_OF_RESOURCES];
-int allocation[5][3] = {{0, 1, 0}, {2, 0, 0}, {3, 0, 2}, {2, 1, 1,}, {0, 0, 2}};
+int allocation[5][3] = {{0, 1, 0}, {2, 0, 0}, {3, 0, 2}, {2, 1, 1,}, {0, 0, 2}}; //numbers from the book example
 
 
 /* the remaining need of each customer */
-int need[NUMBER_OF_CUSTOMERS][NUMBER_OF_RESOURCES];
+int need[NUMBER_OF_CUSTOMERS][NUMBER_OF_RESOURCES]; //calculated in the following calculateNeed method
 
 void calculateNeed() {
     int i, j;
     for (i = 0; i < NUMBER_OF_CUSTOMERS; i++) {
         for (j = 0; j < NUMBER_OF_RESOURCES; j++) {
             need[i][j] = maximum[i][j] - allocation[i][j];
-            
         }
     }
 }
 
-void printCustomer(int customer_num) {
+void printCustomer(int customer_num) { //prints the modified resource info for an individual customer
     int j;
     printf("Available:  ");
     for (j = 0; j < NUMBER_OF_RESOURCES; j++) {
@@ -131,7 +133,7 @@ int release_resources(int customer_num, int release[]) {
     return -1;
 }
 
-void printBank() {
+void printBank() { //prints the resource information of all customers
     int i, j;
     printf("Available:\n");
     for (i = 0; i < NUMBER_OF_RESOURCES; i++) {
@@ -169,7 +171,7 @@ void requestRandom() { //requests a random amount of resources from a random cus
     int i, customer_num;
     int request[NUMBER_OF_RESOURCES];
     for (i = 0; i < NUMBER_OF_RESOURCES; i++) {
-        request[i] = rand() % 5;
+        request[i] = rand() % 5; //I picked 5 as a random threshold, this can be changed
     }
     customer_num = rand() % NUMBER_OF_CUSTOMERS;
     request_resources(customer_num, request);
@@ -185,9 +187,31 @@ void releaseRandom() { //releases a random amount of resources from a random cus
     release_resources(customer_num, release);
 }
 
+void *randomRequestAndRelease(void *data) { //makes threads loop 20 times, performing a request and release with each iteration
+    int i, id;
+    threadData myData = *((threadData *)data);
+    id = myData.id;
+   
+    for (i = 0; i < NUMBER_OF_LOOPS; i++) {
+        pthread_mutex_lock(&mutex); //lock mutex before going into critical section
+        printf("I am thread %d: Counter: %d\n", id, i);
+        requestRandom(); //each thread requests random number of resources
+        pthread_mutex_unlock(&mutex); //unlock mutex
+        
+        sleep(1); //sleep for 1 second
+        
+        pthread_mutex_lock(&mutex); //lock mutex before going into critical section
+        printf("I am thread %d: Counter: %d\n", id, i);
+        releaseRandom(); //each thread releases random number of resources
+        pthread_mutex_unlock(&mutex); //unlock mutex
+        
+    }
+    pthread_exit(0); //pthread exits
+}
+
 int main(int argc, char *argv[]){
     srand(0); //sets the seed of the random number generator
-    int i = 1, j = 0, k = 2, numThreads = NUMBER_OF_CUSTOMERS; 
+    int i = 1, j = 0, num, numThreads = NUMBER_OF_CUSTOMERS; 
     for (i; i < argc; i++) { //sets the available array to the inputs from the terminal
         available[j] = atoi(argv[i]);
         j++;
@@ -196,33 +220,25 @@ int main(int argc, char *argv[]){
     calculateNeed();
     printBank();
     
-    
-   // int request[3] = {1, 0, 2};
-//    int release[3] = {3, 0, 2};
-    //printf("request safety: %d", checkSafety(1, request));
-  //  request_resources(1, request);
-//    release_resources(1, release);
-   for (i = 0; i < 20; i++) {
-        requestRandom();
-        releaseRandom();
-   }
-    
-   /* pthread_t *threadIds;
+    pthread_t *threadIds;
     pthread_attr_t attr;
-    
-    threadIds = malloc(sizeof(pthread_t) * numThreads);
+
+    threadIds = malloc(sizeof(pthread_t) * NUMBER_OF_CUSTOMERS);
     pthread_attr_init(&attr);
+    pthread_mutex_init(&mutex, NULL);
     
-        //prepare data to send to the i-th thread
-        customerData *data = malloc(sizeof(customerData));
-        data->request[0] = 1;
-        data->request[1] = 0;
-        data->request[2] = 2;
-
-        
+    for (i = 0; i < NUMBER_OF_CUSTOMERS; i++) {
+        threadData *data = malloc(sizeof(threadData));
+        data->id = i;
+    
         //create thread
-        pthread_create(&threadIds[i], &attr, printingThread, voidPtrArr);*/
-        
-
+        pthread_create(&threadIds[i], &attr, randomRequestAndRelease, data);
+    }
     
+    for (i = 0; i < NUMBER_OF_CUSTOMERS; i++) {
+        pthread_join(threadIds[i], NULL);
+    }
+    printf("All threads complete!\n");
+    printBank(); //prints final resource information
+    pthread_mutex_destroy(&mutex); //destroys mutex     
 }

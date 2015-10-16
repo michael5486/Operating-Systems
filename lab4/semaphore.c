@@ -22,8 +22,6 @@ int main(int argc, char **argv){
 
     sem_init(&threadSem, 0, 3);
     sem_init(&counterSem, 0, 1);
-    
-    
     for(i = 0; i < THREAD_COUNT; i ++)
         pthread_create(&threadIDs[i], &attr, printer, NULL);
     
@@ -33,14 +31,13 @@ int main(int argc, char **argv){
 
     printf("All threads complete!\n");
     sem_destroy(&threadSem);
-    sem_destroy(&threadCount);
+    sem_destroy(&counterSem);
 }
 
 void *printer(void *params){
-
     sem_wait(&threadSem);
-    sem_wait(&counterSem);
 
+    sem_wait(&counterSem);
     threadCount++;
     printf("Thread %d executing\n", threadCount);
     sem_post(&counterSem);

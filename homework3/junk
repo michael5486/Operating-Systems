@@ -1,0 +1,10 @@
+    
+    /*int request[3] = {1, 0, 2};
+    int release[3] = {3, 0, 2};
+    printf("request safety: %d", checkSafety(1, request));
+    request_resources(1, request);
+    release_resources(1, release);
+    for (i = 0; i < 20; i++) {
+        requestRandom();
+        releaseRandom();
+    }*/
