@@ -1,7 +1,10 @@
+//Michael Esposito's Banker's Algorithm
+
 #include <pthread.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define NUMBER_OF_CUSTOMERS 5
 #define NUMBER_OF_RESOURCES 3
@@ -12,6 +15,8 @@ typedef struct {
 } threadData;
 
 pthread_mutex_t mutex; //mutex to control race conditions
+int finish[NUMBER_OF_CUSTOMERS]; //array of booleans that will determine if system is in a safe state
+int work[NUMBER_OF_CUSTOMERS];
 
 /* the available amount of each resource */
 int available[NUMBER_OF_RESOURCES];
@@ -35,6 +40,13 @@ void calculateNeed() {
         for (j = 0; j < NUMBER_OF_RESOURCES; j++) {
             need[i][j] = maximum[i][j] - allocation[i][j];
         }
+    }
+}
+
+void initializeFinish() { //initializes all values in finish array to 0
+    int i;
+    for (i = 0; i < NUMBER_OF_CUSTOMERS; i++) {
+        finish[i] = 0;
     }
 }
 
@@ -83,6 +95,59 @@ int checkReleaseSafety(int customer_num, int release[]) {
         }
     }
     return 1; //release can be granted
+}
+
+int checkAllSafety() {
+    int i;
+    for (i = 0; i < NUMBER_OF_CUSTOMERS; i++) {
+        if (finish[i] == 0) {
+            return 0; //finish is not true for all i, return 0 (false)
+        }
+    }
+    return 1; //finish is true for all i, return 1 (true)
+}
+
+int step2(int work[]) { //safety algorithm as outlined on p331
+    
+    int i, j;
+    for (i = 0; i < NUMBER_OF_CUSTOMERS; i++) {
+        if (finish[i] == 0) {
+            for (j = 0; j < NUMBER_OF_RESOURCES; j++) {
+                if (need[i][j] <= work[j]) {
+                    return i; //found a customer i s.t. both finish[i]==false and need<= work
+                }
+            }        
+        }
+    }
+    return -1; //step2 failed, must check if all customers are safe
+}
+
+int findSafeState() {
+    
+    int i, j, k, run = 1;
+    int work[NUMBER_OF_RESOURCES];
+    memcpy(work, available, NUMBER_OF_RESOURCES * sizeof(int)); //copies contents of available[] into work[]
+    initializeFinish();
+    
+    while (run) {
+        k = step2(work);
+        if (k != -1) { //an i was wound, must run step 3
+            for (j = 0; j < NUMBER_OF_RESOURCES; j++) {
+                work[j] = work[j] + allocation[k][j]; //work = work +allocation of customer from step 2
+            }
+            finish[k] = 1;
+        }
+        else {
+            if (checkAllSafety() == 1) {
+                run = 0; 
+                return 1; //safety check is complete, return 1
+            }
+            else {
+                run = 0;
+                return 0; //safety check failed, return 0
+            }
+        }
+    }
 }
 
 int request_resources(int customer_num, int request[]) {
@@ -175,6 +240,19 @@ void requestRandom() { //requests a random amount of resources from a random cus
     }
     customer_num = rand() % NUMBER_OF_CUSTOMERS;
     request_resources(customer_num, request);
+    if (findSafeState() == 0) {
+        printf("System is in unsafe state. Returning to old state");
+        release_resources(customer_num, request); //releases resources, returns to old state
+        pthread_mutex_unlock(&mutex); //unlock mutex
+        sleep(1);
+        pthread_mutex_lock(&mutex); //unlock mutex
+        release_resources(customer_num, request); //going into critical section again
+        pthread_mutex_unlock(&mutex); //unlock mutex
+    }
+    else {
+        printf("System is in safe state\n");
+    }
+    
 }
 
 void releaseRandom() { //releases a random amount of resources from a random customer
