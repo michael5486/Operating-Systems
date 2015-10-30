@@ -1,0 +1,4 @@
+       // printf("%s",buf);
+       // buf[strlen(buf) - 1] = '\0';
+        //tempChar = (char*)malloc(sizeof(char*));
+        //strcpy(tempChar, buf);
