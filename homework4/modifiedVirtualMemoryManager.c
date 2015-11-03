@@ -4,6 +4,14 @@
 
     
 typedef unsigned char byte;
+
+struct Node { //struct created to form the nodes in the linkedList
+	int memLoc;
+	struct Node *next;
+};
+
+struct Node* front = NULL; //required for Queue
+struct Node* rear = NULL;
     
 FILE *addresses, *correct, *backingStore;
 char buf[16];
@@ -16,9 +24,69 @@ char *pageFrame;// = malloc(256 * sizeof(char)) ; //allocates 256 bytes of space
 char *tempChar;
 int count, seekTo, physMemCount = 0, tlbCount = 0, numPageFaults = 0, tlbHitRate = 0;
     
-byte physicalMem[65536]; //memory of 2^8 * 2^8 bytes 
+byte physicalMem[32768]; //memory of 2^8 * 2^8 bytes 
 byte tlb[2][16]; //translation lookaside buffer
 byte pageTable[256]; //page Table
+
+// to dequeue an integer.
+int Dequeue() {
+	struct Node* temp = front;
+	int temp2;
+	if(front == NULL) {
+		printf("Queue is Empty\n");
+		return;
+	}
+	if(front == rear) {
+		front = rear = NULL;
+	}
+	else {
+		temp2 = front->memLoc;
+		front = front->next;
+	}
+	free(temp);
+	printf("Dequeued: %d   ", temp2);
+	return temp2;
+}
+
+int calcLength() { //calculates the length of the queue
+	struct Node* temp = front;
+	int length = 0;	
+	while(temp != NULL) {
+		length++;
+		temp = temp->next;
+	}
+	return length;
+}
+
+// To Enqueue an integer
+int Enqueue(int x) {
+	struct Node* temp = (struct Node*)malloc(sizeof(struct Node));
+	int toReturn;
+	if (calcLength() < 128) {
+	
+		temp->memLoc =x; 
+		temp->next = NULL;
+		if(front == NULL && rear == NULL){
+			front = rear = temp;
+			return -1;
+		}
+		rear->next = temp;
+		rear = temp; 
+	}
+	else {
+		toReturn = Dequeue();
+				temp->memLoc =x; 
+		temp->next = NULL;
+		if(front == NULL && rear == NULL){
+			front = rear = temp;
+			return -1;
+		}
+		rear->next = temp;
+		rear = temp;
+		printf("toReturn: %d", toReturn );
+		return toReturn;
+	}
+}
 
 void printAddress(long int virtualAddress, long int physicalAddress, int value) { //prints the virtual address, physical address, and associated value
     printf("Virtual Address: %-6ld Physical Address: %-6ld Value: %-6d\n", virtualAddress, physicalAddress, (signed char)value);
@@ -28,6 +96,31 @@ void printPageTable() {
     int i;
     for (i = 0; i < 256; i++) {
         printf("pageTable[%d] = %d\n", i, pageTable[i]);
+    }
+}
+
+void printQueue() {
+	struct Node* temp = front;
+	while(temp != NULL) {
+		printf("%d ",temp->memLoc);
+		temp = temp->next;
+	}
+	printf("Length: %d \n", calcLength());
+}
+
+int findFreeFrame(int locationInMemory) {
+    
+    printQueue();
+    
+    if (physMemCount < 128) {
+        Enqueue(locationInMemory);
+        return physMemCount;
+    }
+    else {
+        int temp = Enqueue(locationInMemory);
+        printf("Used page replacement strategy here!!! Insert at memLoc %d\n", temp);
+        printf("temp: %d", temp);
+        return temp;
     }
 }
 
@@ -62,7 +155,7 @@ int checkTLB(int num, int offset) { //checks if a given frame is in the TLB
 
 
 int checkPageTable(int num, int offset, int TLBlocation) { //check if a given page is in the pageTable
-    int pageNum = pageNumber[num], value, i, temp;
+    int pageNum = pageNumber[num], value, i, temp, freeFrame;
 
     if (pageTable[pageNum] == 0) { //fetches page from memory, stores it in physicalMemory
         //printf("page fault...adding page %d to pageTable at location %d in physmemory\n", pageNum, physMemCount);
@@ -79,7 +172,10 @@ int checkPageTable(int num, int offset, int TLBlocation) { //check if a given pa
         fread(pageFrame, 256, 1, backingStore);
 
         //makes the frame in physicalMem equal to the pageFrame returned from backingStore
-        temp = physMemCount * 256;
+        freeFrame = findFreeFrame(physMemCount);
+        printf("Free frame: %d \n ", freeFrame);
+        temp = freeFrame * 256;
+        printf("actual memory Location: %d", temp);
         for (i = 0; i < 256; i++) {
             
             physicalMem[temp + i] = pageFrame[i];
