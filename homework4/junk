@@ -2,3 +2,25 @@
        // buf[strlen(buf) - 1] = '\0';
         //tempChar = (char*)malloc(sizeof(char*));
         //strcpy(tempChar, buf);
+        
+            //size_t fread ( void * ptr, size_t size, size_t count, FILE * stream );
+    //int fseek ( FILE * stream, long int offset, int origin );
+    //fseek(backingStore, 256 * 244 + 75, SEEK_END);
+    //fileLen = ftell(backingStore);
+   // fseek(backingStore, 47 * 256, SEEK_SET);
+    //fread(pageFrame, 256, 1, backingStore);
+    //for (i = 0; i < 256; i++) {   
+      //  printf("Pageframe[%d] = %d\n", i, pageFrame[i]);
+    //}
+    //printf("length: %d", fileLen);
+    
+    
+
+/*int pullFromBackingStore(int num, int offset) { //num is the ith element that I am trying to print data for
+        pageFrame = malloc(256 * sizeof(char));
+        seekTo = pageNumber[num] * 256;
+        fseek(backingStore, seekTo, SEEK_SET);
+        fread(pageFrame, 256, 1, backingStore);
+        printf("logical address: %-6ld pageNumber: %-6ld offset: %-6d seekTo: %-6d value:%-6d \n", addressArray[num], pageNumber[num], offset, seekTo, pageFrame[offset]);
+        //return pageFrame[offset[num]];
+}*/
